@@ -1,0 +1,64 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: lectures
+// Document ID: current
+// Fields:
+//   - content: string (required) - Nội dung bài giảng Markdown
+//   - title: string (optional) - Tiêu đề bài giảng
+//   - createdAt: timestamp (required) - Thời gian tạo
+//
+// Collection: tests
+// Document ID: current
+// Fields:
+//   - questions: array (required) - Danh sách câu hỏi
+//   - createdAt: timestamp (required) - Thời gian tạo
+//
+// Collection: results
+// Document ID: auto-generated
+// Fields:
+//   - studentName: string (required) - Tên sinh viên
+//   - className: string (required) - Tên lớp
+//   - score: number (required) - Điểm số
+//   - total: number (required) - Tổng số câu
+//   - evaluation: string (required) - Đánh giá (Xuất sắc, Hiểu tốt, Cần ôn tập)
+//   - feedback: string (required) - Nhận xét từ AI
+//   - createdAt: timestamp (required) - Thời gian nộp bài
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "lemaihuong06062004@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    // Lectures: Everyone can read, only admin can write
+    match /lectures/{lectureId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Tests: Everyone can read, only admin can write
+    match /tests/{testId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Results: Everyone can create, only admin can read all
+    match /results/{resultId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

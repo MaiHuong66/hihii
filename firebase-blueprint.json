@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "Lecture": {
+      "title": "Lecture",
+      "description": "Nội dung bài giảng được AI tạo ra",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string", "description": "Nội dung bài giảng chi tiết (Markdown)" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "title": { "type": "string" }
+      },
+      "required": ["content", "createdAt"]
+    },
+    "Test": {
+      "title": "Test",
+      "description": "Bộ câu hỏi trắc nghiệm",
+      "type": "object",
+      "properties": {
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswer": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Result": {
+      "title": "Result",
+      "description": "Kết quả làm bài của sinh viên",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "className": { "type": "string" },
+        "score": { "type": "number" },
+        "total": { "type": "number" },
+        "evaluation": { "type": "string" },
+        "feedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentName", "className", "score", "total"]
+    }
+  },
+  "firestore": {
+    "lectures/current": {
+      "schema": "Lecture",
+      "description": "Bài giảng hiện tại"
+    },
+    "tests/current": {
+      "schema": "Test",
+      "description": "Bài test hiện tại"
+    },
+    "results": {
+      "schema": "Result",
+      "description": "Danh sách kết quả của sinh viên"
+    }
+  }
+}
