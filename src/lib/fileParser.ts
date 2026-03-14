@@ -32,14 +32,18 @@ export async function parseFile(file: File): Promise<string> {
   if (extension === 'pdf') {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = '';
+    
+    const pagePromises = [];
     for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
-      text += strings.join(' ') + '\n';
+      pagePromises.push((async () => {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        return content.items.map((item: any) => (item as any).str).join(' ');
+      })());
     }
-    return text;
+    
+    const pages = await Promise.all(pagePromises);
+    return pages.join('\n');
   }
 
   if (['png', 'jpg', 'jpeg'].includes(extension || '')) {

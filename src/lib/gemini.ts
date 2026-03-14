@@ -4,7 +4,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export async function generateLecture(sourceText: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [{ parts: [{ text: `Dựa trên tài liệu sau, hãy tạo một bài giảng chi tiết cho sinh viên đại học. 
     Bài giảng phải bao gồm:
     1. Giải thích chi tiết nội dung.
@@ -20,14 +20,14 @@ export async function generateLecture(sourceText: string) {
   return response.text;
 }
 
-export async function generateTest(lectureContent: string) {
+export async function generateTest(sourceText: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: [{ parts: [{ text: `Dựa trên bài giảng sau, hãy tạo 15 câu hỏi trắc nghiệm. 
+    model: "gemini-3-flash-preview",
+    contents: [{ parts: [{ text: `Dựa trên tài liệu sau, hãy tạo 15 câu hỏi trắc nghiệm để kiểm tra kiến thức sinh viên. 
     Mỗi câu hỏi có 4 đáp án A, B, C, D và chỉ có 1 đáp án đúng.
     Trả về kết quả dưới dạng JSON array các object có cấu trúc: { "question": string, "options": string[], "correctAnswer": "A" | "B" | "C" | "D" }
     
-    Bài giảng: ${lectureContent}` }] }],
+    Tài liệu: ${sourceText}` }] }],
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -55,7 +55,7 @@ export async function generateTest(lectureContent: string) {
 
 export async function evaluateResult(score: number, total: number, studentName: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [{ parts: [{ text: `Sinh viên ${studentName} vừa hoàn thành bài test với điểm số ${score}/${total}. 
     Hãy đưa ra một nhận xét cá nhân ngắn gọn, công bằng và khuyến khích. 
     Nhận xét dựa trên điểm số:
@@ -68,7 +68,7 @@ export async function evaluateResult(score: number, total: number, studentName: 
 
 export async function chatWithAI(userMessage: string, lectureContent: string, history: any[]) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       ...history,
       { role: 'user', parts: [{ text: userMessage }] }

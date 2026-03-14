@@ -176,7 +176,15 @@ export default function App() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setUploadFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files) as File[];
+      const oversizedFiles = files.filter(f => f.size > 10 * 1024 * 1024);
+      
+      if (oversizedFiles.length > 0) {
+        alert(`Một số file vượt quá giới hạn 10MB: ${oversizedFiles.map(f => f.name).join(', ')}. Vui lòng chọn file nhỏ hơn.`);
+        return;
+      }
+      
+      setUploadFiles(prev => [...prev, ...files]);
     }
   };
 
@@ -190,20 +198,24 @@ export default function App() {
         fullText += '\n\n' + parsed;
       }
 
-      // 1. Generate Lecture
-      const lectureContent = await generateLecture(fullText);
-      await setDoc(doc(db, 'lectures', 'current'), {
-        content: lectureContent,
-        createdAt: serverTimestamp(),
-        title: 'Bài giảng mới'
-      });
+      // 1. Generate Lecture and Test in parallel
+      const [lectureContent, testQuestions] = await Promise.all([
+        generateLecture(fullText),
+        generateTest(fullText)
+      ]);
 
-      // 2. Generate Test
-      const testQuestions = await generateTest(lectureContent);
-      await setDoc(doc(db, 'tests', 'current'), {
-        questions: testQuestions,
-        createdAt: serverTimestamp()
-      });
+      // 2. Save to Firestore
+      await Promise.all([
+        setDoc(doc(db, 'lectures', 'current'), {
+          content: lectureContent,
+          createdAt: serverTimestamp(),
+          title: 'Bài giảng mới'
+        }),
+        setDoc(doc(db, 'tests', 'current'), {
+          questions: testQuestions,
+          createdAt: serverTimestamp()
+        })
+      ]);
 
       setUploadText('');
       setUploadFiles([]);
@@ -211,7 +223,7 @@ export default function App() {
       setActiveWindow('lecture');
     } catch (error) {
       console.error(error);
-      alert('Có lỗi xảy ra khi xử lý tài liệu.');
+      alert('Có lỗi xảy ra khi xử lý tài liệu. Vui lòng thử lại với tài liệu ngắn hơn hoặc kiểm tra kết nối mạng.');
     } finally {
       setLoading(false);
     }
@@ -402,8 +414,17 @@ export default function App() {
                   size="lg"
                   isLoading={loading}
                 >
-                  <Send className="w-5 h-5 mr-2" />
-                  GỬI TÀI LIỆU (Submit)
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Đang phân tích tài liệu & tạo bài học...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      GỬI TÀI LIỆU (Submit)
+                    </>
+                  )}
                 </Button>
               </Card>
             </motion.div>
@@ -556,24 +577,34 @@ export default function App() {
                           {q.options.map((opt: string, optIdx: number) => {
                             const label = String.fromCharCode(65 + optIdx);
                             const isSelected = answers[idx] === label;
+                            const isAnswered = answers[idx] !== undefined;
+                            const isCorrect = label === q.correctAnswer;
+                            const isWrongSelection = isSelected && !isCorrect;
+
                             return (
                               <button
                                 key={optIdx}
+                                disabled={isAnswered}
                                 onClick={() => handleAnswer(idx, label)}
                                 className={cn(
-                                  'flex items-center gap-4 p-4 rounded-xl border text-left transition-all',
+                                  'flex items-center gap-4 p-4 rounded-xl border text-left transition-all relative',
                                   isSelected 
-                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-1 ring-indigo-200' 
-                                    : 'bg-white border-slate-100 hover:border-slate-300 text-slate-600'
+                                    ? (isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 border-rose-200 text-rose-700 ring-1 ring-rose-200')
+                                    : (isAnswered && isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-100 hover:border-slate-300 text-slate-600'),
+                                  isAnswered && !isSelected && !isCorrect && 'opacity-50'
                                 )}
                               >
                                 <span className={cn(
                                   'w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold',
-                                  isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 text-slate-400'
+                                  isSelected 
+                                    ? (isCorrect ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white')
+                                    : (isAnswered && isCorrect ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 text-slate-400')
                                 )}>
                                   {label}
                                 </span>
-                                {opt}
+                                <span className="flex-1">{opt}</span>
+                                {isAnswered && isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+                                {isAnswered && isWrongSelection && <AlertCircle className="w-5 h-5 text-rose-600" />}
                               </button>
                             );
                           })}
